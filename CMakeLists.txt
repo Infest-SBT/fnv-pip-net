@@ -21,10 +21,10 @@ add_library(PipNet SHARED src/PipNet.cpp)
 set_target_properties(PipNet PROPERTIES
     OUTPUT_NAME "PipNet"
     PREFIX ""
-    CXX_STANDARD 17
+    CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON)
 
-target_compile_definitions(PipNet PRIVATE RUNTIME=1 EDITOR=0 WIN32_LEAN_AND_MEAN)
+target_compile_definitions(PipNet PRIVATE RUNTIME=1 EDITOR=0 RUNTIME_VERSION=0x040020D0 WIN32_LEAN_AND_MEAN)
 target_include_directories(PipNet PRIVATE
     "${XNVSE_SOURCE_ROOT}"
     "${XNVSE_SOURCE_ROOT}/nvse"
@@ -33,5 +33,5 @@ target_link_libraries(PipNet PRIVATE
     "${WV_LOADER}"
     ole32 user32 gdi32 shell32 shlwapi version)
 if(MSVC)
-    target_compile_options(PipNet PRIVATE /W4 /EHsc)
+    target_compile_options(PipNet PRIVATE /W4 /EHsc /FI\"nvse/prefix.h\")
 endif()

@@ -12,6 +12,9 @@
 #include <cstdint>
 #include <cwctype>
 #include <string>
+// xNVSE uses unqualified min/max in legacy headers; keep Windows macros disabled.
+using std::max;
+using std::min;
 #include "nvse/PluginAPI.h"
 
 using Microsoft::WRL::Callback;

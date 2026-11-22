@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cwctype>
+#include <cstring>
 #include <string>
 // xNVSE uses unqualified min/max in legacy headers; keep Windows macros disabled.
 using std::max;
@@ -22,6 +23,7 @@ inline SInt32 max(SInt32 index, UInt32 count) noexcept {
     return std::max(index, static_cast<SInt32>(count));
 }
 #include "nvse/PluginAPI.h"
+#include "nvse/GameUI.h"
 
 using Microsoft::WRL::Callback;
 using Microsoft::WRL::ComPtr;
@@ -37,6 +39,9 @@ constexpr int kAddress = 104;
 constexpr int kGo = 105;
 constexpr int kClose = 106;
 constexpr wchar_t kWindowClass[] = L"PipNetBrowserWindow";
+constexpr int kDefaultHotkey = VK_F11;
+constexpr uintptr_t kInterfaceManagerPointer = 0x011D8A80; // xNVSE GameUI.cpp, supported runtime
+constexpr const char* kWebButtonTileName = "PN_WebButton";
 
 // Verified in xNVSE GameUI.cpp for the 32-bit 1.4.0.525 runtime.
 constexpr uintptr_t kMenuVisibilityBase = 0x011F308F;
@@ -49,12 +54,15 @@ std::atomic<bool> g_started{false};
 std::atomic<bool> g_shuttingDown{false};
 std::atomic<HWND> g_uiWindow{nullptr};
 std::atomic<bool> g_keyWasDown{false};
+std::atomic<bool> g_leftMouseWasDown{false};
+enum class WebMode : uint8_t { Data, Web };
+std::atomic<WebMode> g_webMode{WebMode::Data};
 HANDLE g_thread = nullptr;
 HWND g_gameWindow = nullptr;
 HMODULE g_module = nullptr;
 
 struct Config {
-    int key = VK_F9;
+    int key = kDefaultHotkey;
     int x = 36; int y = 16; int width = 60; int height = 70;
     std::wstring homepage = L"https://www.wikipedia.org/";
 };
@@ -83,6 +91,27 @@ bool IsPipboyOpen() {
     // Only accessed after the NVSE runtime-version check in NVSEPlugin_Query.
     auto base = reinterpret_cast<volatile const unsigned char*>(kMenuVisibilityBase);
     return base[kInventoryMenu] != 0 || base[kStatsMenu] != 0 || base[kMapDataMenu] != 0;
+}
+
+// UIO inserts a hotrect inside MM_MainRect. Read the hovered tile only on
+// the game's main loop thread. No external GameUI.cpp symbols are linked.
+bool IsWebButtonHovered() {
+    if (!reinterpret_cast<volatile const unsigned char*>(kMenuVisibilityBase)[kMapDataMenu])
+        return false;
+    auto* manager = *reinterpret_cast<InterfaceManager* const*>(kInterfaceManagerPointer);
+    if (!manager) return false;
+    for (Tile* tile = manager->activeTile; tile; tile = tile->parent) {
+        const char* name = tile->name.m_data;
+        if (name && std::strcmp(name, kWebButtonTileName) == 0) return true;
+    }
+    return false;
+}
+
+bool IsGameForeground() {
+    HWND foreground = GetForegroundWindow();
+    DWORD pid = 0;
+    if (foreground) GetWindowThreadProcessId(foreground, &pid);
+    return pid == GetCurrentProcessId();
 }
 
 BOOL CALLBACK FindWindowForCurrentProcess(HWND hwnd, LPARAM param) {
@@ -120,7 +149,7 @@ void ReadConfiguration() {
     auto read = [&](const wchar_t* key, int value) -> int {
         return GetPrivateProfileIntW(L"Browser", key, value, ini.c_str());
     };
-    g_config.key = std::clamp(read(L"Hotkey", VK_F9), 1, 255);
+    g_config.key = std::clamp(read(L"Hotkey", kDefaultHotkey), 1, 255);
     g_config.x = std::clamp(read(L"XPercent", 36), 0, 90);
     g_config.y = std::clamp(read(L"YPercent", 16), 0, 90);
     g_config.width = std::clamp(read(L"WidthPercent", 60), 15, 100);
@@ -193,6 +222,7 @@ void PositionOverlay() {
 
 void CloseOverlay(bool restoreGameFocus) {
     g_wantOpen.store(false);
+    g_webMode.store(WebMode::Data);
     if (g_controller) g_controller->put_IsVisible(FALSE);
     if (g_host) ShowWindow(g_host, SW_HIDE);
     if (restoreGameFocus && IsWindow(g_gameWindow))
@@ -387,7 +417,7 @@ DWORD WINAPI BrowserThread(void*) {
     cls.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     cls.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     RegisterClassExW(&cls);
-    HWND hwnd = CreateWindowExW(WS_EX_TOOLWINDOW, kWindowClass, L"Pip-Net [F9 to close]",
+    HWND hwnd = CreateWindowExW(WS_EX_TOOLWINDOW, kWindowClass, L"Pip-Net [F11 to close]",
                                 WS_POPUP | WS_BORDER | WS_CLIPCHILDREN,
                                 CW_USEDEFAULT, CW_USEDEFAULT, 900, 600,
                                 g_gameWindow, nullptr, g_module, nullptr);
@@ -419,6 +449,7 @@ void RequestToggle() {
     const bool show = !g_wantOpen.load();
     if (show && !IsPipboyOpen()) return;
     g_wantOpen.store(show);
+    g_webMode.store(show ? WebMode::Web : WebMode::Data);
     HWND hwnd = g_uiWindow.load();
     if (hwnd && IsWindow(hwnd)) {
         PostMessageW(hwnd, kToggleMessage, show ? 1 : 0, 0);
@@ -446,16 +477,27 @@ void MessageHandler(NVSEMessagingInterface::Message* message) {
         const bool down = (GetAsyncKeyState(g_config.key) & 0x8000) != 0;
         const bool before = g_keyWasDown.exchange(down);
         if (down && !before && IsPipboyOpen()) RequestToggle();
+
+        // A genuine MapMenu/UIO hotrect click opens the same browser as F11.
+        // Track mouse edges even when MapMenu is not visible, preventing a
+        // held click in another tab from activating the button unexpectedly.
+        const bool mouseDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+        const bool mouseBefore = g_leftMouseWasDown.exchange(mouseDown);
+        if (mouseDown && !mouseBefore && !g_wantOpen.load() &&
+            IsGameForeground() && IsWebButtonHovered())
+            RequestToggle();
         break;
     }
     case NVSEMessagingInterface::kMessage_ExitToMainMenu:
         g_wantOpen.store(false);
+        g_webMode.store(WebMode::Data);
         if (HWND wnd = g_uiWindow.load()) PostMessageW(wnd, kToggleMessage, 0, 0);
         break;
     case NVSEMessagingInterface::kMessage_ExitGame:
     case NVSEMessagingInterface::kMessage_ExitGame_Console:
         g_shuttingDown.store(true);
         g_wantOpen.store(false);
+        g_webMode.store(WebMode::Data);
         if (HWND wnd = g_uiWindow.load()) PostMessageW(wnd, kStopMessage, 0, 0);
         break;
     default: break;

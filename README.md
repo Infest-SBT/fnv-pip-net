@@ -86,3 +86,9 @@ The new icon and **"Выход в Web"** are a UIO-injected `MapMenu/MM_MainRect
 UIO registration: `PipNet\\WebButton.xml::MapMenu::MM_MainRect` with a second line of `true`. On click the NVSE plugin checks `InterfaceManager::activeTile` / parent chain on the game thread and opens the same WebView2 browser as F11. The button is optional; F11 works without UIO.
 
 **Unverified points:** installed UI overhauls may position `MM_MainRect` differently or intercept `activeTile`; test mouse click in the game before claiming full compatibility. Source and texture are original to Pip-Net. The icon is a small 32×32 uncompressed BGRA DDS globe.
+
+## Experimental offscreen texture probe (PR #2, NOT a full embedded web browser)
+
+Set `SurfaceProbe=1` under `[Browser]` in `Data/NVSE/Plugins/PipNet.ini` to replace the normal WebView2 overlay with an **opt-in diagnostic**: open DATA, press F11 and look for a moving green scan line in the game-native `PN_WebSurface` image. Press F11 to hide. Restore `SurfaceProbe=0` for the working WebView2 browser.
+
+This separately validates the real D3D9/MapMenu texture path and the Pip-Boy display effects. It uses its own 256×256 BGRA DDS, guards type pointers, and refuses cross-thread D3D9 work. It does NOT yet stream Chromium frames, forward web input or replace the external overlay with an interactive browser. In-game acceptance is still required. The constants are based on xNVSE and public MIT-licensed PipBoyVideoPlayer research; see `THIRD_PARTY_NOTICES.md`.

@@ -24,6 +24,7 @@ inline SInt32 max(SInt32 index, UInt32 count) noexcept {
 }
 #include "nvse/PluginAPI.h"
 #include "nvse/GameUI.h"
+#include "PipboySurface.h"
 
 using Microsoft::WRL::Callback;
 using Microsoft::WRL::ComPtr;
@@ -55,6 +56,7 @@ std::atomic<bool> g_shuttingDown{false};
 std::atomic<HWND> g_uiWindow{nullptr};
 std::atomic<bool> g_keyWasDown{false};
 std::atomic<bool> g_leftMouseWasDown{false};
+std::atomic<DWORD> g_gameLoopThreadId{0};
 enum class WebMode : uint8_t { Data, Web };
 std::atomic<WebMode> g_webMode{WebMode::Data};
 HANDLE g_thread = nullptr;
@@ -63,6 +65,7 @@ HMODULE g_module = nullptr;
 
 struct Config {
     int key = kDefaultHotkey;
+    bool surfaceProbe = false;
     int x = 36; int y = 16; int width = 60; int height = 70;
     std::wstring homepage = L"https://www.wikipedia.org/";
 };
@@ -150,6 +153,7 @@ void ReadConfiguration() {
         return GetPrivateProfileIntW(L"Browser", key, value, ini.c_str());
     };
     g_config.key = std::clamp(read(L"Hotkey", kDefaultHotkey), 1, 255);
+    g_config.surfaceProbe = read(L"SurfaceProbe", 0) != 0;
     g_config.x = std::clamp(read(L"XPercent", 36), 0, 90);
     g_config.y = std::clamp(read(L"YPercent", 16), 0, 90);
     g_config.width = std::clamp(read(L"WidthPercent", 60), 15, 100);
@@ -450,6 +454,7 @@ void RequestToggle() {
     if (show && !IsPipboyOpen()) return;
     g_wantOpen.store(show);
     g_webMode.store(show ? WebMode::Web : WebMode::Data);
+    if (g_config.surfaceProbe) return; // opt-in texture diagnostic, no HWND
     HWND hwnd = g_uiWindow.load();
     if (hwnd && IsWindow(hwnd)) {
         PostMessageW(hwnd, kToggleMessage, show ? 1 : 0, 0);
@@ -474,6 +479,8 @@ void MessageHandler(NVSEMessagingInterface::Message* message) {
     switch (message->type) {
     case NVSEMessagingInterface::kMessage_MainGameLoop: {
         if (g_shuttingDown.load()) return;
+        g_gameLoopThreadId.store(GetCurrentThreadId(), std::memory_order_relaxed);
+        if (g_config.surfaceProbe) pipnet::SetSurfaceVisible(g_wantOpen.load());
         const bool down = (GetAsyncKeyState(g_config.key) & 0x8000) != 0;
         const bool before = g_keyWasDown.exchange(down);
         if (down && !before && IsPipboyOpen()) RequestToggle();
@@ -488,6 +495,11 @@ void MessageHandler(NVSEMessagingInterface::Message* message) {
             RequestToggle();
         break;
     }
+    case NVSEMessagingInterface::kMessage_OnFramePresent:
+        if (g_config.surfaceProbe && g_wantOpen.load() &&
+            GetCurrentThreadId() == g_gameLoopThreadId.load(std::memory_order_relaxed))
+            pipnet::DrawSurfaceProbeFrame();
+        break;
     case NVSEMessagingInterface::kMessage_ExitToMainMenu:
         g_wantOpen.store(false);
         g_webMode.store(WebMode::Data);

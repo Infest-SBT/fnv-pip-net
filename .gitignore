@@ -1,0 +1,21 @@
+# Local build output and tools
+/build/
+/external/
+/.vs/
+out/
+CMakeFiles/
+CMakeCache.txt
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.user
+*.pdb
+*.obj
+*.ilk
+*.exp
+*.lib
+*.dll
+*.log
+
+# Browser runtime cache
+WebView2/

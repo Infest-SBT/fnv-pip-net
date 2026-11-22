@@ -1,0 +1,27 @@
+name: Pip-Net Windows x86 build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch xNVSE headers
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/xNVSE/NVSE.git external/NVSE
+      - name: Build Pip-Net
+        shell: pwsh
+        run: .\scripts\build-win32.ps1
+      - name: Package prototype
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifact\Data\NVSE\Plugins -Force | Out-Null
+          Copy-Item build\Release\PipNet.dll artifact\Data\NVSE\Plugins\PipNet.dll
+          Copy-Item config\PipNet.ini artifact\Data\NVSE\Plugins\PipNet.ini
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PipNet-x86-untested
+          path: artifact/

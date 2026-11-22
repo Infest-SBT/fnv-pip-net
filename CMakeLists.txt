@@ -31,7 +31,7 @@ target_include_directories(PipNet PRIVATE
     "${WV_INCLUDE}")
 target_link_libraries(PipNet PRIVATE
     "${WV_LOADER}"
-    ole32 user32 gdi32 shell32 shlwapi version d3d9)
+    ole32 user32 gdi32 shell32 shlwapi version d3d9 dxguid)
 if(MSVC)
     target_compile_options(PipNet PRIVATE /W4 /EHsc /FI\"nvse/prefix.h\")
 endif()

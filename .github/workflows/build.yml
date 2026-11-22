@@ -27,6 +27,7 @@ jobs:
           Copy-Item data\menus\prefabs\PipNet\WebButton.xml artifact\Data\menus\prefabs\PipNet\WebButton.xml
           Copy-Item data\uio\public\PipNet.txt artifact\Data\uio\public\PipNet.txt
           Copy-Item data\textures\Interface\PipNet\WebIcon.dds artifact\Data\textures\Interface\PipNet\WebIcon.dds
+          Copy-Item data\textures\Interface\PipNet\WebSurface.dds artifact\Data\textures\Interface\PipNet\WebSurface.dds
           Copy-Item LICENSE artifact\LICENSE
       - uses: actions/upload-artifact@v4
         with:

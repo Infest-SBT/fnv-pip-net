@@ -17,7 +17,7 @@ if(NOT EXISTS "${WV_INCLUDE}/WebView2.h" OR NOT EXISTS "${WV_LOADER}")
     message(FATAL_ERROR "Set WEBVIEW2_SDK_ROOT to extracted Microsoft.Web.WebView2 NuGet package")
 endif()
 
-add_library(PipNet SHARED src/PipNet.cpp)
+add_library(PipNet SHARED src/PipNet.cpp src/PipboySurface.cpp)
 set_target_properties(PipNet PROPERTIES
     OUTPUT_NAME "PipNet"
     PREFIX ""
@@ -31,7 +31,7 @@ target_include_directories(PipNet PRIVATE
     "${WV_INCLUDE}")
 target_link_libraries(PipNet PRIVATE
     "${WV_LOADER}"
-    ole32 user32 gdi32 shell32 shlwapi version)
+    ole32 user32 gdi32 shell32 shlwapi version d3d9 dxguid)
 if(MSVC)
     target_compile_options(PipNet PRIVATE /W4 /EHsc /FI\"nvse/prefix.h\")
 endif()

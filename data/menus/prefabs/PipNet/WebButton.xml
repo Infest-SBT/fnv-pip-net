@@ -35,4 +35,22 @@
             <string> Выход в Web </string>
         </text>
     </hotrect>
+    <!-- Hidden until SurfaceProbe=1 and F11 -->
+    <rect name="PN_WebPanel">
+        <x> 20 </x>
+        <y><copy src="parent" trait="height" /><sub> 310 </sub></y>
+        <width> 384 </width><height> 216 </height>
+        <depth> 10 </depth><locus> 1 </locus>
+        <visible> 0 </visible><target> 0 </target>
+        <image name="PN_WebSurface">
+            <x> 0 </x><y> 0 </y>
+            <width> <copy src="parent()" trait="width" /> </width>
+            <height> <copy src="parent()" trait="height" /> </height>
+            <depth> 11 </depth><alpha> 255 </alpha><target> 0 </target>
+            <visible> <copy src="parent()" trait="visible" /> </visible>
+            <systemcolor> 0 </systemcolor>
+            <red> 255 </red><green> 255 </green><blue> 255 </blue>
+            <filename> Interface\PipNet\WebSurface.dds </filename>
+        </image>
+    </rect>
 </rect>

@@ -15,6 +15,12 @@
 // xNVSE uses unqualified min/max in legacy headers; keep Windows macros disabled.
 using std::max;
 using std::min;
+// xNVSE GameForms.h::AddAtTemp mixes signed index with an unsigned count.
+// Provide this narrow overload instead of changing vendor code or enabling
+// the Win32 max macro across WebView2/C++ standard-library headers.
+inline SInt32 max(SInt32 index, UInt32 count) noexcept {
+    return std::max(index, static_cast<SInt32>(count));
+}
 #include "nvse/PluginAPI.h"
 
 using Microsoft::WRL::Callback;

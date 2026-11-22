@@ -1,0 +1,38 @@
+<rect name="PN_Root">
+    <x> 0 </x><y> 0 </y>
+    <width> <copy src="parent()" trait="width" /> </width>
+    <height> <copy src="parent()" trait="height" /> </height>
+    <depth> 11 </depth><visible> 1 </visible><target> 0 </target>
+
+    <!-- Keep the original Local Map and the other DATA tabs intact. -->
+    <hotrect name="PN_WebButton">
+        <id> 9177 </id>
+        <x> 16 </x>
+        <y>
+            <copy src="parent" trait="height" />
+            <sub> 83 </sub>
+        </y>
+        <width> 158 </width><height> 28 </height>
+        <depth> 12 </depth><locus> 1 </locus>
+        <visible> 1 </visible>
+        <target> <copy src="me" trait="visible" /> </target>
+
+        <image name="PN_WebIcon">
+            <x> 4 </x><y> 1 </y>
+            <width> 25 </width><height> 25 </height>
+            <depth> 13 </depth><target> 0 </target>
+            <alpha> 255 </alpha><systemcolor> 0 </systemcolor>
+            <red> 255 </red><green> 255 </green><blue> 255 </blue>
+            <filename> Interface\PipNet\WebIcon.dds </filename>
+        </image>
+        <text name="PN_WebLabel">
+            <x> 32 </x><y> 1 </y>
+            <width> 124 </width><height> 25 </height>
+            <depth> 13 </depth><target> 0 </target>
+            <zoom> 54 </zoom><font> 3 </font>
+            <justify> &left; </justify>
+            <systemcolor> 1 </systemcolor><brightness> 255 </brightness>
+            <string> Выход в Web </string>
+        </text>
+    </hotrect>
+</rect>

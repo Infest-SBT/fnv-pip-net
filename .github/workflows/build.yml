@@ -21,6 +21,13 @@ jobs:
           New-Item -ItemType Directory -Path artifact\Data\NVSE\Plugins -Force | Out-Null
           Copy-Item build\Release\PipNet.dll artifact\Data\NVSE\Plugins\PipNet.dll
           Copy-Item config\PipNet.ini artifact\Data\NVSE\Plugins\PipNet.ini
+          New-Item -ItemType Directory -Path artifact\Data\menus\prefabs\PipNet -Force | Out-Null
+          New-Item -ItemType Directory -Path artifact\Data\uio\public -Force | Out-Null
+          New-Item -ItemType Directory -Path artifact\Data\textures\Interface\PipNet -Force | Out-Null
+          Copy-Item data\menus\prefabs\PipNet\WebButton.xml artifact\Data\menus\prefabs\PipNet\WebButton.xml
+          Copy-Item data\uio\public\PipNet.txt artifact\Data\uio\public\PipNet.txt
+          Copy-Item data\textures\Interface\PipNet\WebIcon.dds artifact\Data\textures\Interface\PipNet\WebIcon.dds
+          Copy-Item LICENSE artifact\LICENSE
       - uses: actions/upload-artifact@v4
         with:
           name: PipNet-x86-untested

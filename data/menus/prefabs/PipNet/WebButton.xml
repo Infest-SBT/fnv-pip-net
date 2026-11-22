@@ -32,7 +32,7 @@
             <zoom> 54 </zoom><font> 3 </font>
             <justify> &left; </justify>
             <systemcolor> 1 </systemcolor><brightness> 255 </brightness>
-            <string> Г‚Г»ГµГ®Г¤ Гў Web </string>
+            <string> Выход в Web </string>
         </text>
     </hotrect>
     <!-- Hidden until SurfaceProbe=1 and F11 -->

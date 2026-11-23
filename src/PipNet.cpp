@@ -66,6 +66,8 @@ HMODULE g_module = nullptr;
 struct Config {
     int key = kDefaultHotkey;
     bool surfaceProbe = false;
+    bool surfaceProbeAnimation = false;
+    int surfaceProbeFps = 8;
     int x = 36; int y = 16; int width = 60; int height = 70;
     std::wstring homepage = L"https://www.wikipedia.org/";
 };
@@ -154,6 +156,8 @@ void ReadConfiguration() {
     };
     g_config.key = std::clamp(read(L"Hotkey", kDefaultHotkey), 1, 255);
     g_config.surfaceProbe = read(L"SurfaceProbe", 0) != 0;
+    g_config.surfaceProbeAnimation = read(L"SurfaceProbeAnimation", 0) != 0;
+    g_config.surfaceProbeFps = std::clamp(read(L"SurfaceProbeFps", 8), 1, 10);
     g_config.x = std::clamp(read(L"XPercent", 36), 0, 90);
     g_config.y = std::clamp(read(L"YPercent", 16), 0, 90);
     g_config.width = std::clamp(read(L"WidthPercent", 60), 15, 100);
@@ -480,7 +484,16 @@ void MessageHandler(NVSEMessagingInterface::Message* message) {
     case NVSEMessagingInterface::kMessage_MainGameLoop: {
         if (g_shuttingDown.load()) return;
         g_gameLoopThreadId.store(GetCurrentThreadId(), std::memory_order_relaxed);
-        if (g_config.surfaceProbe) pipnet::SetSurfaceVisible(g_wantOpen.load());
+        if (g_config.surfaceProbe) {
+            // A hidden Pip-Boy cannot own an active browser page. Only update
+            // the UI object's visibility on a transition; the surface module
+            // caches the resolved tile and does no recursive per-frame walks.
+            if (!IsPipboyOpen() && g_wantOpen.exchange(false))
+                g_webMode.store(WebMode::Data);
+            const bool mapIsVisible =
+                reinterpret_cast<volatile const unsigned char*>(kMenuVisibilityBase)[kMapDataMenu] != 0;
+            pipnet::SetSurfaceVisible(g_wantOpen.load() && mapIsVisible);
+        }
         const bool down = (GetAsyncKeyState(g_config.key) & 0x8000) != 0;
         const bool before = g_keyWasDown.exchange(down);
         if (down && !before && IsPipboyOpen()) RequestToggle();
@@ -496,9 +509,10 @@ void MessageHandler(NVSEMessagingInterface::Message* message) {
         break;
     }
     case NVSEMessagingInterface::kMessage_OnFramePresent:
-        if (g_config.surfaceProbe && g_wantOpen.load() &&
+        if (g_config.surfaceProbe && g_config.surfaceProbeAnimation &&
+            g_wantOpen.load() &&
             GetCurrentThreadId() == g_gameLoopThreadId.load(std::memory_order_relaxed))
-            pipnet::DrawSurfaceProbeFrame();
+            pipnet::DrawSurfaceProbeFrame(g_config.surfaceProbeFps);
         break;
     case NVSEMessagingInterface::kMessage_ExitToMainMenu:
         g_wantOpen.store(false);

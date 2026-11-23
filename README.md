@@ -92,3 +92,24 @@ UIO registration: `PipNet\\WebButton.xml::MapMenu::MM_MainRect` with a second li
 Set `SurfaceProbe=1` under `[Browser]` in `Data/NVSE/Plugins/PipNet.ini` to replace the normal WebView2 overlay with an **opt-in diagnostic**: open DATA, press F11 and look for a moving green scan line in the game-native `PN_WebSurface` image. Press F11 to hide. Restore `SurfaceProbe=0` for the working WebView2 browser.
 
 This separately validates the real D3D9/MapMenu texture path and the Pip-Boy display effects. It uses its own 256×256 BGRA DDS, guards type pointers, and refuses cross-thread D3D9 work. It does NOT yet stream Chromium frames, forward web input or replace the external overlay with an interactive browser. In-game acceptance is still required. The constants are based on xNVSE and public MIT-licensed PipBoyVideoPlayer research; see `THIRD_PARTY_NOTICES.md`.
+
+## 4 FPS regression fix (PR #3)
+When the DATA page was opened, the previous test build traversed the Gamebryo UI tree
+every game tick to find `PN_WebPanel`, even if the web mode was closed. When F11
+activated the probe it also traversed `PN_WebSurface` and locked a D3D9 texture
+every presented frame. Both operations ran synchronously on the game thread.
+
+This fix caches panel/surface tile lookups for the current MapMenu root, only
+changes panel visibility on state transitions, and throttles retries if an
+injected tile is unavailable. The default `SurfaceProbeAnimation=0` is **static**
+and makes **zero D3D9 LockRect uploads**; the packaged 256x256 DDS contains
+a green grid so the screen treatment can be tested without any frame writes.
+
+To test animated output separately, set `SurfaceProbeAnimation=1` and
+`SurfaceProbeFps=8` (allowed: 1..10); upload is rate-limited regardless of
+the engine FPS. Keep `SurfaceProbe=1` to see the game-native image. Restore
+`SurfaceProbe=0` for the original live WebView2 overlay.
+
+**Still requires in-game testing.** A passing CI compile does not prove
+that all UI configurations and renderer wrappers are stall-free; lower
+`SurfaceProbeFps` to 2, or disable animation, if stutters remain.

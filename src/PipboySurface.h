@@ -1,5 +1,5 @@
 #pragma once
 namespace pipnet {
 void SetSurfaceVisible(bool visible) noexcept;
-void DrawSurfaceProbeFrame() noexcept;
+void DrawSurfaceProbeFrame(int maxFps) noexcept;
 }
